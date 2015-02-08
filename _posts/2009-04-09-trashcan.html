@@ -1,0 +1,12 @@
+---
+layout: post
+title: The Trashcan
+date: '2009-04-09T09:35:00.002+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2009-09-19T13:58:54.711+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-3683073165852849074
+blogger_orig_url: http://www.groovbird.com/2009/04/trashcan.html
+---
+
+<p>Some people, when starting a new project decide they need a &quot;base library&quot; of some sorts to put all the neat little tricks in that somehow were &quot;left&quot; out of the .NET Framework. They need some wrapper around some functions that do extra checking or they feel generic collections lack a couple of features or something like that. </p>  <p>First of all, I don't have anything against that, since I also think a nice function here and there can make the body of a lot of code more readable, more elegant. The truth is however, that this little base library quickly becomes the defacto container for everything that was deemed &quot;unworthy of finding a true place&quot;. </p>  <p>There's a place for everything, and some of that stuff has some place elsewhere, but somehow the developer couldn't be bothered (or couldn't figure out) where to really put it. Perhaps because there wasn't enough time to think about it, or perhaps because that developer was lazy, considering that it might be a good idea to do this at &quot;refactoring time&quot; (which probably equals to &quot;will never happen&quot;). </p>  <p>So this little library turns into a &quot;trashcan&quot; of stuff that doesn't belong there, stuff that has nothing to do with the other stuff. Sometimes that stuff might be shared among two different projects in the solution. Two is usually enough to decide that this thing needs to be &quot;reusable&quot;. So after a while every single project in the solution has a reference to the trashcan, and every single project becomes really &quot;dependent&quot; on it. Without it, that project will not build. And then comes the time that someone wants to flex their &quot;code reuse&quot; muscles and decides that some part of the application is &quot;reusable&quot; within another app. But of course, the trashcan has to be shared as well, even though 90% of the trashcan is totally useless or even dangerous to that other application. </p>  <p>So fear the trashcan, people.</p>  

@@ -1,0 +1,85 @@
+---
+layout: post
+title: HandleError and HTTP response codes.
+date: '2009-07-15T10:40:00.004+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2009-09-19T14:07:57.138+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-4021587991424887865
+blogger_orig_url: http://www.groovbird.com/2009/07/handleerror-and-http-response-codes.html
+---
+
+<p>After asking <a href="http://stackoverflow.com/questions/1129900/in-asp-net-mvc-should-onexception-be-used-for-application-exceptions">this question</a> on Stack Overflow, I went out and used HandleError for my application exception handling. It works, as long as you turn on the customErrors configuration element. Then, after applying the HandleError attribute twice on my controller base class, I was able to get the exceptions NotFoundException and NoAccessException (my own, the names speak for themselves) turned into a nice rendering of the NotFound and NoAccess views. </p>  <p>Then I read up on HTTP status codes, and figured that HTTP code 500 is perhaps not the most appropriate for a situation in which an object with a certain Id cannot be found. In the future, for example, I might conclude that if the user wants to <span style="font-style: italic">delete</span> one of his objects, that object wouldn't be really deleted in the database but instead just <span style="font-style: italic">flagged</span> as such. In that case, my model should throw a DeletedException instead of a NotFoundException, so that I could inform the user that the object once existed but is no longer there. Also, I would want to return HTTP code 410 (&quot;Gone&quot;) along with it, so that search engines can remove the entry from their indexes.</p>  <p> HandleError doesn't allow you to do that. But no worry, since I derived a new one from it, temporarily called MyHandleError (perhaps to be renamed HandleErrorWithStatus in the future) that would call the base OnException, and set the StatusCode in the Reponse after the correct View has been selected. Here’s the code to do it:</p>  <pre class="csharpcode">[SuppressMessage(<span class="str">&quot;Microsoft.Performance&quot;</span>, <span class="str">&quot;CA1813:AvoidUnsealedAttributes&quot;</span>,
+Justification = <span class="str">&quot;This attribute is AllowMultiple = true and users might want to override behavior.&quot;</span>)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = <span class="kwrd">true</span>, AllowMultiple = <span class="kwrd">true</span>)]
+<span class="kwrd">public</span> <span class="kwrd">class</span> MyHandleErrorAttribute : HandleErrorAttribute
+{
+    <span class="kwrd">private</span> <span class="kwrd">int</span> statusCode = 500;
+
+    <span class="kwrd">public</span> <span class="kwrd">int</span> StatusCode
+    {
+        get
+        {
+            <span class="kwrd">return</span> statusCode;
+        }
+        set
+        {
+            statusCode = <span class="kwrd">value</span>;
+        }
+    }
+
+    <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">void</span> OnException(ExceptionContext filterContext)
+    {
+        <span class="kwrd">if</span> (filterContext == <span class="kwrd">null</span>)
+        {
+            <span class="kwrd">throw</span> <span class="kwrd">new</span> ArgumentNullException(<span class="str">&quot;filterContext&quot;</span>);
+        }
+
+        <span class="rem">// If custom errors are disabled, we need to let the normal ASP.NET exception handler</span>
+        <span class="rem">// execute so that the user can see useful debugging information.</span>
+        <span class="kwrd">if</span> (filterContext.ExceptionHandled || !filterContext.HttpContext.IsCustomErrorEnabled)
+        {
+            <span class="kwrd">return</span>;
+        }
+
+        <span class="kwrd">if</span> (!ExceptionType.IsInstanceOfType(filterContext.Exception))
+        {
+            <span class="kwrd">return</span>;
+        }
+
+        <span class="kwrd">if</span> (<span class="kwrd">new</span> HttpException(<span class="kwrd">null</span>, filterContext.Exception).GetHttpCode() != 500)
+        {
+            <span class="kwrd">return</span>;
+        }
+
+        <span class="kwrd">base</span>.OnException(filterContext);
+
+        filterContext.HttpContext.Response.StatusCode = StatusCode;
+    }
+
+}</pre>
+<style type="text/css">
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }</style>  

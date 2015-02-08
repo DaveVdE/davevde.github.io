@@ -1,0 +1,37 @@
+---
+layout: post
+title: How Amazon Glacier works (or at least, in my mind)
+date: '2012-08-27T16:45:00.000+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2012-08-27T16:45:45.777+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-4048877530110303970
+blogger_orig_url: http://www.groovbird.com/2012/08/how-amazon-glacier-works-or-at-least-in.html
+---
+
+A week ago Amazon's <a href="http://aws.amazon.com/">Web Services</a>&nbsp;division has bestowed us with another game-changing product that made me so exciting I couldn't sleep: <a href="http://aws.amazon.com/glacier/">Amazon Glacier</a>. If you don't know what it is, I can sum it up for you in one line:&nbsp;Amazon Glacier is a new Web Service that allows you to store your data safely and securely remotely in cold storage at rock-bottom price.<br />
+<br />
+If you've doubted the whole 'off-site storage' concept because of pricing, this will perhaps make you change your tune: At a mere 0.01€ per GB-month, you can store anything you want. The catch? The service is designed to make it really cheap to store data, but at the price of making it more costly to get your data back.<br />
+<br />
+Here's why: uploading is free (except the cost of your own bandwidth) and immediate: there's no limit but the speed of the Internet connection. Once your data is uploaded, however, you won't see it again until you request it by way of a 'job'. Any sort of operation that you want to perform on your 'vault' (even listing its contents) is requested by such a job. Once queued, this job takes about 4 hours to complete. That's right. 4 hours. Why? I'll tell you in a minute.<br />
+<br />
+This contrasts to <a href="http://aws.amazon.com/s3/">S3</a>, AWS's other low-cost storage solution, that is only 10 times as expensive. In Amazon S3, your uploaded files become immediately available. This is why providers like <a href="https://www.dropbox.com/">DropBox</a> have built their application on top of S3. Combine S3 with <a href="http://aws.amazon.com/cloudfront/">CloudFront</a> and you have a very potent web publishing platform.<br />
+<br />
+But to make this work, Amazon has to build a gigantic storage area network: it has to buy the hard drives, but it also has to put them in servers, keep them powered and cooled. Which kept me pondering about Glacier. How do they make it work?<br />
+<br />
+Here's how I think it works. Disclaimer: what follows is my opinion, and it's all conjecture. Amazon has the reputation of not going into much detail about how its services work behind the scenes, except when it's good marketing to do so (in the case of DynamicDB and its use of SSDs) or good public relations (in case of an incident, for example).<br />
+<br />
+What is cheaper than keeping hard drives in a storage area network? It kept me up for awhile, but then it hit me: they're not keeping those hard drives online! They're probably using a system in which hard drives are detached from the network until needed, stored in a safe location.<br />
+<br />
+Picture this: everytime you upload something, that goes onto a hard drive that is connected. Now, everybody is uploading all the time, so it's simply a matter of keeping enough hard drives attached and filling up as required to handle the upload demand. This is basically a streaming process: Amazon only needs to ID every drive (probably using QR codes or something) and keep details on what 'archive' (the single unit of upload) is stored on which drive.<br />
+<br />
+When a disk is full, it gets detached and goes into storage. To increase durability, they probably do this for the same archive a couple of times in different locations (but always in the same region, to comply with their service agreement). This can either be done manually, or using some sort of robot. It doesn't necessarily have ot be hard drives either. <a href="http://en.wikipedia.org/wiki/Linear_Tape-Open">Magnetic tape</a> has evolved, but given today's hard drive prices, it may be far-fetched.<br />
+<br />
+Given that the disk is now disconnected and put in a cabinet, it's pretty hard to get your data back. Which is where the jobs come in. When you put in a request to retrieve some of that data that you uploaded, your request goes into a queue. They may start looking for your drive the minute that request is received, or they may have to queue to cope with demand, but all of that doesn't matter: &nbsp;it's queued, so they can hire more workers or extra robots when they can't handle the queue in time anymore. Your disk comes out of the closet, onto a queue before it gets connected back to the system (a real treadmill might be involved too!) and when connected the archives that need to be fetched are placed into online storage and you're notified of the completion of the job and you can download your stuff. Hard drives that haven't been accessed for a predetermined period of time may be randomly put in the queue just to check them for integrity!<br />
+<br />
+And that explains the 3.5 to 4 hour wait for retrieval requests to complete, and the bias of the cost towards retrieval (the pricing of which is, I must say, rather confusing).<br />
+<br />
+Isn't it all just <b>brilliant</b>?<br />
+<br />
+Next: how you can become your own Amazon Glacier using old hard drives you have laying around and a cabinet that you can lock.<br />
+<br />

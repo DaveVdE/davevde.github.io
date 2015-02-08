@@ -1,0 +1,18 @@
+---
+layout: post
+title: About Hyper-V, VPN, the next few weeks
+date: '2009-07-02T09:53:00.004+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2009-09-29T14:51:25.803+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-9192001010709730074
+blogger_orig_url: http://www.groovbird.com/2009/07/about-hyper-v-vpn-next-few-weeks.html
+---
+
+In the coming months, I'll be at home enjoying my "vacation" and using it to learn some cool technologies, and hopefully I'll find some time to write interesting things about the process. One of the first things on my tasklist is setting up a number of VM's on a server running Hyper-V. I need a development server that will run the latest build of my project as well as the source repository. Another server will run the "release" build that will, hopefully, one day be public.<br />
+I already have a server, a nice Dell PowerEDGE with 4 cores humming happily with 12GB of RAM and a raid system. Nothing too fancy. On it, I have the Windows Server 2008 installed with the Hyper-V role. <br />
+One of the first issues I had was setting up <a href="http://technet.microsoft.com/en-us/magazine/2007.06.cableguy.aspx">SSTP</a> correctly. I did this a couple of months ago, and it worked fine but now that I'm on Windows 7 I didn't quite remember all the hoops I had to jump through the first time around. Luckily there's the <a href="http://support.microsoft.com/kb/947031">Interweb</a>, and I found some info about what that issue might be. <br />
+The problem is of course that I'm a cheap bastard and that I'm using a self-signed certificate (aren't we all?) and that the client doesn't necessarily approve of this. I read <a href="http://support.microsoft.com/kb/947031">this post</a>, and <a href="http://blogs.technet.com/rrasblog/archive/2007/11/08/do-you-want-to-change-the-certificate-used-by-the-sstp-server-read-how.aspx">this post </a>as well. I figured out that it wasn't enough to import the server certificate into any old certificate store. No. It had to be the root store on the Computer account. And also, registering the certificate itself wasn't enough. It had to be the root certificate that issued the server certificate. So I had to open up the certificate, switch to the Certification Path tab, click on the topmost certificate, click "View Certificate", in there switch to the "Details" tab, and click Copy to File in order to export the signing certificate. Then, I had to import it into the Trusted Root Certification Authorities store of the Local Computer account. And then it worked. <br />
+Also note that for Windows 7 RC, there's an update called RTAS for Windows 7, that will enable you to install (yes, it won't install it, but the option will be there) the Hyper-V management console in Windows 7. After installing the update, use the "Turn Windows Features On or Off" in the Control Panel to install the Hyper-V maangement console. And use the excellent <a href="http://code.msdn.microsoft.com/HVRemote">HVRemote</a> to make it all work, of course.<br />
+<br />
+Update: now that Windows 7 has gone RTM, the link to RTAS for Windows 7 is no longer valid. <a href="http://www.microsoft.com/downloads/details.aspx?FamilyID=7d2f6ad7-656b-4313-a005-4e344e43997d&amp;displaylang=en">Here's the real deal</a>.

@@ -1,0 +1,210 @@
+---
+layout: post
+title: Enabling client caching of dynamic content
+date: '2009-09-19T19:31:00.001+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2009-09-19T19:31:18.811+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-2332080078256537402
+blogger_orig_url: http://www.groovbird.com/2009/09/enabling-client-caching-of-dynamic.html
+---
+
+<p>In my last post, I was explaining how I wanted to return pictures from my ASP.NET MVC based application. In short, this is what I did:</p>  <pre class="csharpcode">[ReplaceMissingPicture(Picture = <span class="str">&quot;~/Content/Images/nopicture.png&quot;</span>, MimeType = <span class="str">&quot;image/png&quot;</span>)]
+<span class="kwrd">public</span> ActionResult Picture(<span class="kwrd">int</span> id)
+{
+    var item = Service.GetItem(id);
+
+    <span class="kwrd">if</span> (item.Picture != <span class="kwrd">null</span>)
+    {
+        var picture = item.Picture.ToArray();
+        var mime = item.PictureMime;
+
+        <span class="kwrd">return</span> File(picture, mime);
+    }
+    <span class="kwrd">else</span>
+    {
+        <span class="kwrd">return</span> <span class="kwrd">null</span>;
+    }
+}</pre>
+
+<p>Please see my last post for more information about what you see here.</p>
+
+<p>This is all nice, but there’s a problem. Every time the client requests our “Picture” action method, the picture is returned with a HTTP status code 200. This is what you normally want, but my concern is that this happens <em>every time</em>. If this were a static file hosted by the web server, the web server would be smart enough to return an HTTP status code 304, meaning that the requested resource didn’t change since the last time it was requested.</p>
+
+<p>How does this work? That’s relatively simple. When the resource is first requested, and the picture is returned, the web application should add a header to the HTTP response named “<strong>Etag</strong>”. This header contains a string that represents the “version” of the resource. This can really be anything.</p>
+
+<p>When the client requests the same resource again, and the client has a cached copy of the resource, it sends a request containing an extra header named “<strong>If-None-Match</strong>”, meaning that if the resource still matches this version, it should return HTTP 304 and no content.</p>
+
+<p>So how do we implement this?</p>
+
+<p>For the version&#160; information, I chose to place a <strong>timestamp</strong> column in the table containing the picture, and an associated property in the LINQ to SQL business object. The timestamp column type is not related to dates and times. It’s just a value that you can check for if you want to know if the record has changed in any way since you last read it. Which is perfect for this example. </p>
+
+<p>So the first thing we need to do is send the version to the client. In order to keep this testable, I decided to implement it in a way that closely resembles <a href="http://stackoverflow.com/questions/1445838/how-to-get-and-set-http-headers-in-an-action-the-testable-way/1445942#1445942">this answer to my question on Stack Overflow</a>. First of all, we need an interface that we can call from our Action method that deals with adding the tag and checking for it. This should do fine:</p>
+
+<pre class="csharpcode"><span class="kwrd">public</span> <span class="kwrd">interface</span> ITagService
+{
+    <span class="kwrd">string</span> GetRequestTag();
+    <span class="kwrd">void</span> SetResponseTag(<span class="kwrd">string</span> <span class="kwrd">value</span>);
+}</pre>
+
+<p>When we add a property of this interface to our controller and initialize it in the constructor, we can decide what kind of implementation we use at runtime (whether that is the application hosted in IIS, or during testing). So we can use a mock for testing, and we can use the following class in IIS:</p>
+
+<pre class="csharpcode"><span class="kwrd">public</span> <span class="kwrd">class</span> HttpTagService : ITagService
+{
+    <span class="kwrd">public</span> <span class="kwrd">string</span> GetRequestTag()
+    {
+        <span class="kwrd">return</span> HttpContext.Current.Request.Headers[<span class="str">&quot;If-None-Match&quot;</span>];
+    }
+
+    <span class="kwrd">public</span> <span class="kwrd">void</span> SetResponseTag(<span class="kwrd">string</span> <span class="kwrd">value</span>)
+    {
+        HttpContext.Current.Response.AppendHeader(<span class="str">&quot;ETag&quot;</span>, <span class="kwrd">value</span>);
+    }
+}</pre>
+
+<p><style type="text/css">
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }</style>So now our Picture action method looks like this:</p>
+
+<pre class="csharpcode">[ReplaceMissingPicture(Picture = <span class="str">&quot;~/Content/Images/nopicture.png&quot;</span>, MimeType = <span class="str">&quot;image/png&quot;</span>)]
+<span class="kwrd">public</span> ActionResult Picture(<span class="kwrd">int</span> id)
+{
+    var item = Service.GetItem(id);
+
+    var responseTag = item.Version != <span class="kwrd">null</span> ? 
+        Convert.ToBase64String(item.Version.ToArray()) :
+        <span class="kwrd">string</span>.Empty;
+
+    <span class="kwrd">if</span> (item.Picture != <span class="kwrd">null</span>)
+    {
+        var picture = item.Picture.ToArray();
+        var mime = item.PictureMime;
+
+        TagService.SetResponseTag(responseTag);
+
+        <span class="kwrd">return</span> File(picture, mime);
+    }
+    <span class="kwrd">else</span>
+    {
+        <span class="kwrd">return</span> <span class="kwrd">null</span>;
+    }
+}</pre>
+
+<p>A simple <strong>ToBase64String</strong>() from our version column (which is mapped to a <strong>Binary</strong> object) should do just fine.</p>
+
+<p>Before we go into how we’ll check for the tag (which is pretty trivial) we also need to know how to return the actual HTTP 304 status. The following needs to happen:</p>
+
+<ul>
+  <li><strong>Response.SuppressContent</strong> must be set to true.</li>
+
+  <li><strong>Response.StatusCode</strong> needs to be set to 304.</li>
+
+  <li><strong>Response.StatusDescription</strong> needs a description.</li>
+
+  <li><strong>Response</strong> needs a header “<strong>Content-Length</strong>” set to “0”.</li>
+</ul>
+
+<p>This last one is important, as it will allow the client to keep the connection open for the next request while not expecting any more output from the current request.</p>
+
+<p>In order to keep this testable, I chose to create a custom <strong>ActionResult</strong> called <strong>NotModifiedResult</strong>. Here’s the implementation:</p>
+
+<pre class="csharpcode"><span class="kwrd">public</span> <span class="kwrd">class</span> NotModifiedResult : ActionResult
+{
+    <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">void</span> ExecuteResult(ControllerContext context)
+    {
+        var response = context.HttpContext.Response;
+
+        response.SuppressContent = <span class="kwrd">true</span>;
+        response.StatusCode = 304;
+        response.StatusDescription = <span class="str">&quot;Not Modified&quot;</span>;
+        response.AddHeader(<span class="str">&quot;Content-Length&quot;</span>, <span class="str">&quot;0&quot;</span>);
+    }
+}</pre>
+
+<p><style type="text/css">
+.csharpcode, .csharpcode pre
+{
+	font-size: small;
+	color: black;
+	font-family: consolas, "Courier New", courier, monospace;
+	background-color: #ffffff;
+	/*white-space: pre;*/
+}
+.csharpcode pre { margin: 0em; }
+.csharpcode .rem { color: #008000; }
+.csharpcode .kwrd { color: #0000ff; }
+.csharpcode .str { color: #006080; }
+.csharpcode .op { color: #0000c0; }
+.csharpcode .preproc { color: #cc6633; }
+.csharpcode .asp { background-color: #ffff00; }
+.csharpcode .html { color: #800000; }
+.csharpcode .attr { color: #ff0000; }
+.csharpcode .alt 
+{
+	background-color: #f4f4f4;
+	width: 100%;
+	margin: 0em;
+}
+.csharpcode .lnum { color: #606060; }</style>This is exactly what we need, and ASP.NET MVC makes it easy again to keep this all neat and tidy. Our tests can simply check for the type of result returned, and <strong>ExecuteResult</strong>() never needs to be executed in a test environment.</p>
+
+<p>So finally, our Picture action method looks like this:</p>
+
+<pre class="csharpcode">[ReplaceMissingPicture(Picture = <span class="str">&quot;~/Content/Images/nopicture.png&quot;</span>, MimeType = <span class="str">&quot;image/png&quot;</span>)]
+<span class="kwrd">public</span> ActionResult Picture(<span class="kwrd">int</span> id)
+{
+    var item = Service.GetItem(id);
+
+    var requestTag = TagService.GetRequestTag() ?? <span class="kwrd">string</span>.Empty;
+    var responseTag = item.Version != <span class="kwrd">null</span> ? 
+        Convert.ToBase64String(item.Version.ToArray()) :
+        <span class="kwrd">string</span>.Empty;
+
+    <span class="kwrd">if</span> (responseTag == requestTag)
+    {
+        <span class="kwrd">return</span> <span class="kwrd">new</span> NotModifiedResult();
+    }
+
+    <span class="kwrd">if</span> (item.Picture != <span class="kwrd">null</span>)
+    {
+        var picture = item.Picture.ToArray();
+        var mime = item.PictureMime;
+
+        TagService.SetResponseTag(responseTag);
+
+        <span class="kwrd">return</span> File(picture, mime);
+    }
+    <span class="kwrd">else</span>
+    {
+        <span class="kwrd">return</span> <span class="kwrd">null</span>;
+    }
+}</pre>
+
+<p>I’m sure this doesn’t need any explanation. </p>
+
+<p>Two more things I’d like to mention. First of all, I decided to turn the Picture column into a delay loaded column by setting its Delay Loaded property to true in the LINQ to SQL designer. This way, when the table is queried, the column is not selected by default. Only when you access the picture column a new query is started specifically for the picture. This way, when you don’t need the picture (like in a table overview of the business objects) it’s not queried for and retrieved from the database. Also, this means that our action method requires two queries: one for the Item and one for the Picture column. Except that in the case of a client cached picture, the second query doesn’t need to be executed. </p>
+
+<p>Second, I want you to know that this technique here doesn’t just apply to pictures, it applies to any sort of content that can be accessed as a resource. If the client can cache it, you can enable the web application to support that caching method.</p>
+
+<p>Now all I need to do, is apply the same to my <strong>ReplaceMissingPicture</strong> filter that I talked about last time.</p>  

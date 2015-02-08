@@ -1,0 +1,76 @@
+---
+layout: post
+title: About returning missing pictures.
+date: '2009-09-19T11:53:00.002+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2009-09-19T17:39:52.768+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-5221963340095552537
+blogger_orig_url: http://www.groovbird.com/2009/09/about-returning-missing-pictures.html
+---
+
+<p>While working on my pet project, I wanted to return pictures stored in the database. This is actually pretty much child’s play in ASP.NET MVC, and is well documented elsewhere.</p>  <p>Practically, it boils down to this:</p>  <pre class="csharpcode"><span class="kwrd">public</span> ActionResult Picture(<span class="kwrd">int</span> id)
+{
+    var item = Service.GetItem(id);
+
+    <span class="kwrd">if</span> (item.Picture != <span class="kwrd">null</span>)
+    {
+        var picture = item.Picture.ToArray();
+        var mime = item.PictureMime;
+
+        <span class="kwrd">return</span> File(picture, mime);
+    }
+    <span class="kwrd">else</span>
+    {
+        <span class="kwrd">return</span> <span class="kwrd">null</span>;
+    }
+}</pre>
+
+<p>In this particular code, Service is a my data service returning an item (which is a business object in my application) and Picture is a Binary property, linked to a varbinary(MAX) column by LINQ to SQL.</p>
+
+<p>All you need here is a byte array, and a mime type string, and calling File() will return a FileContentResult that takes care of everything else. Like I said, child’s play.</p>
+
+<p>But there’s a couple of things missing. First of all, what happens if the picture can’t be found? What do we return? Do we throw an exception? Well, we certainly throw an exception in the Service when the item can’t be found, but nothing will point to this Action when the item doesn’t exist, so the only way the user would get this exception is by explicitly demanding this Action (and in that case, I don’t care if they get a 404).</p>
+
+<p>But if the item exists, yet there is no picture, then what do we return? The sane thing to return is another picture, that visually says “Sorry, but there’s no picture.”. But returning it from the Action means we need to look it up, use Server.MapPath() to get to the file and return that instead. That means that we’ll need to call Server.MapPath() from inside the Action, and that’s bad for testability.</p>
+
+<p>So what I decided to do was create an Action Filter, that would respond to null being returned from the Action method and replace the content with the missing picture. So here goes:</p>
+
+<pre class="csharpcode"><span class="kwrd">public</span> <span class="kwrd">class</span> ReplaceMissingPictureAttribute : ActionFilterAttribute
+{
+    <span class="kwrd">public</span> <span class="kwrd">string</span> Picture { get; set; }
+    <span class="kwrd">public</span> <span class="kwrd">string</span> MimeType { get; set; }
+
+    <span class="kwrd">public</span> <span class="kwrd">override</span> <span class="kwrd">void</span> OnActionExecuted(ActionExecutedContext filterContext)
+    {
+        <span class="kwrd">if</span> (filterContext.Result <span class="kwrd">is</span> EmptyResult)
+        {
+            filterContext.Result = <span class="kwrd">new</span> FilePathResult(filterContext.RequestContext.HttpContext.Server.MapPath(Picture), MimeType);
+        }
+        <span class="kwrd">base</span>.OnActionExecuted(filterContext);
+    }
+}</pre>
+
+<p>And we apply it like so:</p>
+
+<pre class="csharpcode">[ReplaceMissingPicture(Picture = <span class="str">&quot;~/Content/Images/nopicture.png&quot;</span>, MimeType = <span class="str">&quot;image/png&quot;</span>)]
+<span class="kwrd">public</span> ActionResult Picture(<span class="kwrd">int</span> id)
+{
+    var item = Service.GetItem(id);
+
+    <span class="kwrd">if</span> (item.Picture != <span class="kwrd">null</span>)
+    {
+        var picture = item.Picture.ToArray();
+        var mime = item.PictureMime;
+
+        <span class="kwrd">return</span> File(picture, mime);
+    }
+    <span class="kwrd">else</span>
+    {
+        <span class="kwrd">return</span> <span class="kwrd">null</span>;
+    }
+}</pre>
+
+<p>So we’re still pointing to the right content to return in case null is returned, but the filter takes care of looking up the right content instead of the Action. So when we test for this, we can simply test for null being returned.</p>
+
+<p>Next time I’ll discuss how I managed to make this client cacheable.</p>  

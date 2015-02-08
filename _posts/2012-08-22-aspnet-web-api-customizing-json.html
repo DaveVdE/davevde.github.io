@@ -1,0 +1,18 @@
+---
+layout: post
+title: 'ASP.NET Web API: Customizing the JSON representation for every request.'
+date: '2012-08-22T20:52:00.001+02:00'
+author: Dave Van den Eynde
+tags: 
+modified_time: '2012-08-22T20:52:16.298+02:00'
+blogger_id: tag:blogger.com,1999:blog-10546079.post-4106507592395656448
+blogger_orig_url: http://www.groovbird.com/2012/08/aspnet-web-api-customizing-json.html
+---
+
+Returning JSON in response to a web request is what we all love to do, right? Except of course there's a serious security problem in returning arrays in JSON. So serious, that the ASP.NET MVC team decided to add a 'feature' that requires you to write in your explicit content that you're return JSON for a GET request.<br />
+<div><br />
+</div><div>Phil Haack called in JSON hijacking in his blog post. The obvious work around is to wrap your array in an object. Cool!&nbsp;</div><div><br />
+</div><div>Now I want to do this in ASP.NET MVC Web API. Except of course, I don't want to change my model for this (there's nothing wrong with returning XML, well nothing to do with this security threat anyways) so what I was looking for was a way to <i>customize</i>&nbsp;the way JSON was created.&nbsp;</div><div><br />
+</div><div>The solution is to create a class that inherits from JsonMediaTypeFormatter, which is the class responsible to support the JSON media type. I'm calling it <i>MyJsonMediaTypeFormatter</i>because it's .. mine.&nbsp;</div><script src="https://gist.github.com/3428304.js"> </script><br />
+<div>as you can see, I'm only overriding one method, and I'm not doing too much either. Simply wrapping the value in an anonymous object and letting the base class do all the heavy lifting.</div><div>Now onto configuration. I simply add the following lines to my Application startup:</div><script src="https://gist.github.com/3428319.js"> </script><br />
+<div>And presto, every JSON response that is handled through ASP.NET Web API is wrapped in an object!</div><div>Questions?</div>
