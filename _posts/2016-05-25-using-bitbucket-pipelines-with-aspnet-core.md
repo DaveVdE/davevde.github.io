@@ -5,7 +5,7 @@ date: '2016-05-25T10:00:00.000+02:00'
 author: Dave Van den Eynde
 tags: 
 ---
-Yesterday Atlassian announced [BitBucket Plugins](https://bitbucket.org/product/features/pipelines"), 
+Yesterday Atlassian announced [BitBucket Pipelines](https://bitbucket.org/product/features/pipelines"), 
 a new feature of BitBucket that will replace Bamboo Cloud (which has an EOL of 2017). 
 I was immediately drawn because of three reasons:
 
