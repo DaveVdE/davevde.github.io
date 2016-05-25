@@ -23,7 +23,7 @@ that it's all Docker anyway and that there's an [offical Docker image for .NET C
 
 Long story short, this is what my bitbucket-pipelins.yml file looks like:
 
-{% highlight yml %}
+```yml
 image: microsoft/dotnet
 
 pipelines:
@@ -32,7 +32,7 @@ pipelines:
         script:
           - dotnet restore
           - dotnet build ProjectName
-{% endhighlight %}
+```
 
 This causes `dotnet` to be run in the root of your working copy causing all packages to be restored for all projects 
 (and `project.json.lock` to be written...) and then build the project in folder `ProjectName` (obviously a placeholder 
