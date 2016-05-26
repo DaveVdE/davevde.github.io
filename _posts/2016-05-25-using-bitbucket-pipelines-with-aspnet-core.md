@@ -5,7 +5,7 @@ date: '2016-05-25T10:00:00.000+02:00'
 author: Dave Van den Eynde
 tags: 
 ---
-Yesterday Atlassian announced [BitBucket Plugins](https://bitbucket.org/product/features/pipelines"), 
+Yesterday Atlassian announced [BitBucket Pipelines](https://bitbucket.org/product/features/pipelines"), 
 a new feature of BitBucket that will replace Bamboo Cloud (which has an EOL of 2017). 
 I was immediately drawn because of three reasons:
 
@@ -23,7 +23,7 @@ that it's all Docker anyway and that there's an [offical Docker image for .NET C
 
 Long story short, this is what my bitbucket-pipelins.yml file looks like:
 
-{% highlight yml %}
+```yml
 image: microsoft/dotnet
 
 pipelines:
@@ -32,7 +32,7 @@ pipelines:
         script:
           - dotnet restore
           - dotnet build ProjectName
-{% endhighlight %}
+```
 
 This causes `dotnet` to be run in the root of your working copy causing all packages to be restored for all projects 
 (and `project.json.lock` to be written...) and then build the project in folder `ProjectName` (obviously a placeholder 
