@@ -1,6 +1,6 @@
 ---
 layout: post
-title: BitBucket Pipelines & ASP.NET Core: adding webpack to the mix
+title: BitBucket Pipelines + ASP.NET Core: adding webpack to the mix
 date: '2016-05-26T18:08:00.000+02:00'
 author: Dave Van den Eynde
 tags: aspnet-core bitbucket pipelines
