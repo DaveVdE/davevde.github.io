@@ -5,7 +5,7 @@ date: '2016-05-26T18:08:00.000+02:00'
 author: Dave Van den Eynde
 tags: 
 ---
-Yesterday I blogged about using [BitBucket Plugins](https://bitbucket.org/product/features/pipelines") with
+Yesterday I blogged about using [BitBucket Pipelines](https://bitbucket.org/product/features/pipelines") with
 ASP.NET Core and how you can use Microsoft's public Docker image to automate your builds.
 
 Not completely satisfied, I wanted to have my client assets built using webpack too this way. My first attempt
