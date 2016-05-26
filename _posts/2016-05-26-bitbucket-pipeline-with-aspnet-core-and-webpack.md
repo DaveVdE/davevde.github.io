@@ -49,5 +49,5 @@ pipelines:
 
 There's probably still room for improvement, but it works! Never too old to learn...
 
-** Update: ** I had an issue with `webpack` not failing the build on errors 
+**Update:** I had an issue with `webpack` not failing the build on errors 
 (like missing modules, TypeScript, ...) but it seemed fixed by including the `--bail` option.
